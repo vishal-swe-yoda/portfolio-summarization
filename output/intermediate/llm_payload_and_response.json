@@ -1,0 +1,139 @@
+{
+  "input_payload": {
+    "report_date": "2026-03-30",
+    "benchmark": "BSE 100 TRI",
+    "top_overweight": [
+      {
+        "sector": "Consumer Services",
+        "fund_weight": 6.7,
+        "benchmark_weight": 3.1,
+        "active_weight": 3.6,
+        "notes": "Changing lifestyles"
+      },
+      {
+        "sector": "Consumer Durables",
+        "fund_weight": 4.5,
+        "benchmark_weight": 1.4,
+        "active_weight": 3.1,
+        "notes": "Brand recall"
+      },
+      {
+        "sector": "IT",
+        "fund_weight": 10.9,
+        "benchmark_weight": 8.6,
+        "active_weight": 2.3,
+        "notes": "Cloud and AI"
+      }
+    ],
+    "top_underweight": [
+      {
+        "sector": "Power",
+        "fund_weight": 0.2,
+        "benchmark_weight": 3.4,
+        "active_weight": -3.2,
+        "notes": "Capital intensive"
+      },
+      {
+        "sector": "FMCG",
+        "fund_weight": 6.8,
+        "benchmark_weight": 8.7,
+        "active_weight": -1.9,
+        "notes": "Uneven recovery"
+      },
+      {
+        "sector": "Financial Services",
+        "fund_weight": 32.5,
+        "benchmark_weight": 34.2,
+        "active_weight": -1.7,
+        "notes": "NIM compression"
+      }
+    ],
+    "instruction": "Write concise, evidence-based portfolio observations."
+  },
+  "output_response": {
+    "overweight_commentary": [
+      {
+        "sector": "Consumer Services",
+        "fund_weight": 6.7,
+        "benchmark_weight": 3.1,
+        "active_weight": 3.6,
+        "observations": [
+          "Changing lifestyles"
+        ],
+        "risks": [
+          "Sector-specific earnings or valuation changes may affect relative performance."
+        ]
+      },
+      {
+        "sector": "Consumer Durables",
+        "fund_weight": 4.5,
+        "benchmark_weight": 1.4,
+        "active_weight": 3.1,
+        "observations": [
+          "Brand recall"
+        ],
+        "risks": [
+          "Sector-specific earnings or valuation changes may affect relative performance."
+        ]
+      },
+      {
+        "sector": "IT",
+        "fund_weight": 10.9,
+        "benchmark_weight": 8.6,
+        "active_weight": 2.3,
+        "observations": [
+          "Cloud and AI"
+        ],
+        "risks": [
+          "Sector-specific earnings or valuation changes may affect relative performance."
+        ]
+      }
+    ],
+    "underweight_commentary": [
+      {
+        "sector": "Power",
+        "fund_weight": 0.2,
+        "benchmark_weight": 3.4,
+        "active_weight": -3.2,
+        "observations": [
+          "Capital intensive"
+        ],
+        "risks": [
+          "Sharp cyclical rally in underweight constituents could create relative drag."
+        ]
+      },
+      {
+        "sector": "FMCG",
+        "fund_weight": 6.8,
+        "benchmark_weight": 8.7,
+        "active_weight": -1.9,
+        "observations": [
+          "Uneven recovery"
+        ],
+        "risks": [
+          "Sharp cyclical rally in underweight constituents could create relative drag."
+        ]
+      },
+      {
+        "sector": "Financial Services",
+        "fund_weight": 32.5,
+        "benchmark_weight": 34.2,
+        "active_weight": -1.7,
+        "observations": [
+          "NIM compression"
+        ],
+        "risks": [
+          "Sharp cyclical rally in underweight constituents could create relative drag."
+        ]
+      }
+    ],
+    "portfolio_observations": [
+      "High quality bias: 89% of portfolio companies reside in top Operating Cash Flow tier (C1) and 63% in top RoCE tier (R1 vs 56% for BSE 100 TRI).",
+      "Concentrated high-conviction positioning: Top 10 holdings represent ~49% of portfolio NAV with disciplined risk management.",
+      "Balanced cyclical and defensive exposure providing resilience across market regimes."
+    ],
+    "data_limitations": [
+      "Sector commentary reflects point-in-time holdings as of March 30, 2026."
+    ]
+  }
+}

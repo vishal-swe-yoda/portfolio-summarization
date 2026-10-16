@@ -1,0 +1,100 @@
+report:
+  title: "Portfolio Review"
+  report_date: "2026-03-30"
+  display_date_page1: "30/Mar/2026"
+  display_date_page2: "March 30, 2026"
+  benchmark: "BSE 100 TRI"
+  website: "www.utimf.com"
+  page_size: "16:9"
+  theme: "uti_blue"
+  logo_path: "assets/uti_logo.png"
+
+llm:
+  provider: "ollama"  # Options: "ollama", "openai", "fallback"
+  model: "llama3.1:8b"
+  endpoint: "http://localhost:11434/api/generate"
+  temperature: 0.2
+  instruction: "Write concise, evidence-based portfolio observations."
+
+themes:
+  uti_blue:
+    banner_blue: "#1B4F9C"
+    header_blue: "#004C97"
+    chart_navy: "#002060"
+    positive_green: "#00B050"
+    negative_red: "#FF0000"
+    subheader_grey: "#D9D9D9"
+    zebra_grey: "#E7E6E6"
+    accent_cyan: "#0072BC"
+    accent_orange: "#F58220"
+    text_dark: "#000000"
+    text_light: "#FFFFFF"
+    font_family: "Calibri"
+
+pages:
+  - id: portfolio_summary
+    enabled: true
+    title: "Portfolio - Statistics"
+    layout: "three_table_dashboard"
+    sections:
+      - id: quants_ratios
+        title: "Quants & Ratios"
+        type: table
+        source: calculated_metrics
+        rules: "metric_rules.yaml"
+      - id: market_cap
+        title: "Market Capitalization"
+        type: table
+        source: market_cap_summary
+      - id: valuation
+        title: "Parameters"
+        type: table
+        source: valuation_metrics
+      - id: portfolio_composition
+        title: "Portfolio Composition"
+        type: split_tier_table
+        source: composition_tiers
+
+  - id: sectoral_allocation
+    enabled: true
+    title: "Portfolio - Sectoral Allocation"
+    layout: "sector_analysis"
+    sections:
+      - id: sector_chart
+        title: "Sectoral Breakdown & Active Position (%)"
+        type: horizontal_bar_chart
+        source: sector_summary
+        show_active_weight: true
+      - id: overweight
+        title: "Overweight (Top 3)"
+        type: table_with_commentary
+        source: top_overweight_sectors
+        limit: 3
+        commentary: "llm_analysis"
+      - id: underweight
+        title: "Underweight (Top 3)"
+        type: table_with_commentary
+        source: top_underweight_sectors
+        limit: 3
+        commentary: "llm_analysis"
+
+  - id: holdings_insights
+    enabled: true
+    title: "Portfolio - Holdings & Investment Insights"
+    layout: "holdings_dashboard"
+    sections:
+      - id: top_holdings
+        title: "Top 10 Holdings & Benchmark Comparison"
+        type: table
+        source: top_holdings_summary
+        limit: 10
+      - id: portfolio_changes
+        title: "Key Active Stock Positions & Recent Activity"
+        type: table
+        source: active_stock_positions
+        limit: 5
+      - id: risk_observations
+        title: "AI-Generated Portfolio Observations & Key Risks"
+        type: commentary_box
+        source: portfolio_insights
+        commentary: "llm_analysis"

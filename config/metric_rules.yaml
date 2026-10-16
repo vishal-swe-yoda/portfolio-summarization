@@ -1,0 +1,41 @@
+metrics:
+  - id: month_end_aum
+    label: "Month-end AUM"
+    source_column: "Month-end AUM"
+    format: "INR {:,} Cr"
+    aggregation: "direct"
+  - id: total_stock_count
+    label: "Total Stock Count"
+    source_column: "Total Stock Count"
+    format: "{:d}"
+    aggregation: "count_holdings"
+  - id: active_share
+    label: "Active Share"
+    source_column: "Active Share"
+    format: "{:.0f}%"
+    aggregation: "half_sum_abs_active_weight"
+  - id: top_10_holdings
+    label: "Top-10 Holdings"
+    source_column: "Top-10 Holdings"
+    format: "{:.0f}%"
+    aggregation: "sum_top_10_weights"
+  - id: sharpe_ratio
+    label: "Sharpe Ratio"
+    source_column: "Sharpe Ratio"
+    format: "{:.2f}"
+    aggregation: "direct"
+  - id: beta
+    label: "Beta"
+    source_column: "Beta"
+    format: "{:.2f}"
+    aggregation: "direct"
+  - id: standard_deviation
+    label: "Standard Deviation"
+    source_column: "Standard Deviation"
+    format: "{:.2f}%"
+    aggregation: "direct"
+  - id: portfolio_turnover_ratio
+    label: "Portfolio Turnover Ratio"
+    source_column: "Portfolio Turnover Ratio"
+    format: "{:.0f}%"
+    aggregation: "direct"
