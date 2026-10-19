@@ -4,48 +4,48 @@
     "benchmark": "BSE 100 TRI",
     "top_overweight": [
       {
-        "sector": "Consumer Services",
-        "fund_weight": 6.7,
-        "benchmark_weight": 3.1,
-        "active_weight": 3.6,
-        "notes": "Changing lifestyles"
+        "sector": "Information Technology",
+        "fund_weight": 9.780000000000001,
+        "benchmark_weight": 7.094022000000001,
+        "active_weight": 2.7,
+        "notes": ""
       },
       {
-        "sector": "Consumer Durables",
-        "fund_weight": 4.5,
-        "benchmark_weight": 1.4,
-        "active_weight": 3.1,
-        "notes": "Brand recall"
+        "sector": "Financial Services",
+        "fund_weight": 33.449999999999996,
+        "benchmark_weight": 30.830771000000006,
+        "active_weight": 2.6,
+        "notes": ""
       },
       {
-        "sector": "IT",
-        "fund_weight": 10.9,
-        "benchmark_weight": 8.6,
-        "active_weight": 2.3,
-        "notes": "Cloud and AI"
+        "sector": "Automobile and Auto Components",
+        "fund_weight": 8.96,
+        "benchmark_weight": 7.054061,
+        "active_weight": 1.9,
+        "notes": ""
       }
     ],
     "top_underweight": [
       {
-        "sector": "Power",
-        "fund_weight": 0.2,
-        "benchmark_weight": 3.4,
-        "active_weight": -3.2,
-        "notes": "Capital intensive"
+        "sector": "Capital Goods",
+        "fund_weight": 4.6000000000000005,
+        "benchmark_weight": 6.623351999999998,
+        "active_weight": -2.0,
+        "notes": ""
       },
       {
-        "sector": "FMCG",
-        "fund_weight": 6.8,
-        "benchmark_weight": 8.7,
-        "active_weight": -1.9,
-        "notes": "Uneven recovery"
+        "sector": "Metals & Mining",
+        "fund_weight": 2.36,
+        "benchmark_weight": 4.380928999999999,
+        "active_weight": -2.0,
+        "notes": ""
       },
       {
-        "sector": "Financial Services",
-        "fund_weight": 32.5,
-        "benchmark_weight": 34.2,
+        "sector": "Oil, Gas & Consumable Fuels",
+        "fund_weight": 6.33,
+        "benchmark_weight": 8.007969000000001,
         "active_weight": -1.7,
-        "notes": "NIM compression"
+        "notes": ""
       }
     ],
     "instruction": "Write concise, evidence-based portfolio observations."
@@ -53,87 +53,101 @@
   "output_response": {
     "overweight_commentary": [
       {
-        "sector": "Consumer Services",
-        "fund_weight": 6.7,
-        "benchmark_weight": 3.1,
-        "active_weight": 3.6,
+        "sector": "Information Technology",
+        "fund_weight": 9.78,
+        "benchmark_weight": 7.094022,
+        "active_weight": 2.7,
         "observations": [
-          "Changing lifestyles"
+          "Active bet of +2.7% reflects positive positioning toward structural digital transformation and potential recovery in global enterprise tech spending.",
+          "Allocation sits above the benchmark weighting, serving as a key non-domestic growth driver."
         ],
         "risks": [
-          "Sector-specific earnings or valuation changes may affect relative performance."
+          "Prolonged softness in discretionary IT spending across North America and Europe.",
+          "Adverse foreign exchange fluctuations and wage inflation impacting operating margins."
         ]
       },
       {
-        "sector": "Consumer Durables",
-        "fund_weight": 4.5,
-        "benchmark_weight": 1.4,
-        "active_weight": 3.1,
+        "sector": "Financial Services",
+        "fund_weight": 33.45,
+        "benchmark_weight": 30.830771,
+        "active_weight": 2.6,
         "observations": [
-          "Brand recall"
+          "Financial Services represents the fund's largest single absolute sector allocation at 33.45%.",
+          "Overweight stance signals confidence in domestic credit expansion and well-capitalized institutional balance sheets."
         ],
         "risks": [
-          "Sector-specific earnings or valuation changes may affect relative performance."
+          "Net interest margin contraction in a stabilizing or declining interest rate cycle.",
+          "Unforeseen asset quality deterioration in unsecured retail or SME lending segments."
         ]
       },
       {
-        "sector": "IT",
-        "fund_weight": 10.9,
-        "benchmark_weight": 8.6,
-        "active_weight": 2.3,
+        "sector": "Automobile and Auto Components",
+        "fund_weight": 8.96,
+        "benchmark_weight": 7.054061,
+        "active_weight": 1.9,
         "observations": [
-          "Cloud and AI"
+          "Active weight of +1.9% targets ongoing domestic premiumization trends and sustained replacement demand.",
+          "Positioning benefits from operational leverage and improving component export realization."
         ],
         "risks": [
-          "Sector-specific earnings or valuation changes may affect relative performance."
+          "Volatile commodity prices impacting input costs and gross margins.",
+          "Demand slowdown in entry-level vehicle categories due to elevated cost of ownership."
         ]
       }
     ],
     "underweight_commentary": [
       {
-        "sector": "Power",
-        "fund_weight": 0.2,
-        "benchmark_weight": 3.4,
-        "active_weight": -3.2,
+        "sector": "Capital Goods",
+        "fund_weight": 4.6,
+        "benchmark_weight": 6.623352,
+        "active_weight": -2.0,
         "observations": [
-          "Capital intensive"
+          "Underweight position of -2.0% suggests caution regarding elevated valuations and execution timelines in private capex.",
+          "Allocation remains below the benchmark's 6.62% weight, indicating a preference for less capital-intensive growth."
         ],
         "risks": [
-          "Sharp cyclical rally in underweight constituents could create relative drag."
+          "Underperformance risk if government-led infrastructure spending and manufacturing capex accelerate beyond forecasts.",
+          "Substantial order inflow momentum leading to multiple expansion."
         ]
       },
       {
-        "sector": "FMCG",
-        "fund_weight": 6.8,
-        "benchmark_weight": 8.7,
-        "active_weight": -1.9,
+        "sector": "Metals & Mining",
+        "fund_weight": 2.36,
+        "benchmark_weight": 4.380929,
+        "active_weight": -2.0,
         "observations": [
-          "Uneven recovery"
+          "Fund holds a cautious view on raw material cyclicality, keeping exposure nearly half of the benchmark weight.",
+          "Reflects anticipated pressure from uneven global industrial activity and persistent Chinese production dynamics."
         ],
         "risks": [
-          "Sharp cyclical rally in underweight constituents could create relative drag."
+          "Sharply rising global commodity prices driven by supply constraints or stimulus measures.",
+          "Spike in domestic infrastructure demand supporting higher realization prices."
         ]
       },
       {
-        "sector": "Financial Services",
-        "fund_weight": 32.5,
-        "benchmark_weight": 34.2,
+        "sector": "Oil, Gas & Consumable Fuels",
+        "fund_weight": 6.33,
+        "benchmark_weight": 8.007969,
         "active_weight": -1.7,
         "observations": [
-          "NIM compression"
+          "Underweight stance of -1.7% limits exposure to refining margin volatility and regulatory interventions.",
+          "Portfolio favors secular growth sectors over regulated and commodity-linked energy assets."
         ],
         "risks": [
-          "Sharp cyclical rally in underweight constituents could create relative drag."
+          "Geopolitical disruptions driving sustained surges in crude oil and natural gas prices.",
+          "Strong cash generation and high dividend yields outperforming the broader benchmark during market downturns."
         ]
       }
     ],
     "portfolio_observations": [
-      "High quality bias: 89% of portfolio companies reside in top Operating Cash Flow tier (C1) and 63% in top RoCE tier (R1 vs 56% for BSE 100 TRI).",
-      "Concentrated high-conviction positioning: Top 10 holdings represent ~49% of portfolio NAV with disciplined risk management.",
-      "Balanced cyclical and defensive exposure providing resilience across market regimes."
+      "The portfolio exhibits a deliberate tilt toward domestic financial deepening and consumer discretionary cycles, balanced by selective exposure to global IT services.",
+      "Active risk is financed largely through underweight positions in heavy cyclicals and commodity-linked sectors, namely Capital Goods, Metals & Mining, and Energy.",
+      "Active sector tilts remain disciplined within a tight +/- 3% band, indicating that performance will predominantly be driven by stock selection rather than high-conviction macro factor divergence."
     ],
     "data_limitations": [
-      "Sector commentary reflects point-in-time holdings as of March 30, 2026."
+      "Portfolio analysis is restricted to sector-level aggregates; constituent holdings, market-cap distributions, and stock-specific active weights are unavailable.",
+      "Performance attribution metrics (Brinson allocation and selection effects) and turnover statistics were not provided.",
+      "Cash levels and derivative exposure data are omitted, limiting the complete assessment of uninvested capital and gross/net leverage."
     ]
   }
 }

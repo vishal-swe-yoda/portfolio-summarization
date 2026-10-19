@@ -1,0 +1,27 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environment and Local Settings (dotenv)
+.env
+.env.*
+*.env
+
+# Output Directory
+output/
+
+# Virtual Environment / Local Workspace Folder
+vpoc/
+vpoc
+venv/
+.venv/
+env/
+
+# VS Code / Launch Config
+.vscode/launch.json
+.vscode/
+
+# Testing & Logs
+.pytest_cache/
+*.log

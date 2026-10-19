@@ -4,15 +4,17 @@ report:
   display_date_page1: "30/Mar/2026"
   display_date_page2: "March 30, 2026"
   benchmark: "BSE 100 TRI"
+  bm_name: "BSE100"
+  fund_name: "UTI Multi Cap Fund"
   website: "www.utimf.com"
   page_size: "16:9"
   theme: "uti_blue"
   logo_path: "assets/uti_logo.png"
 
 llm:
-  provider: "ollama"  # Options: "ollama", "openai", "fallback"
-  model: "llama3.1:8b"
-  endpoint: "http://localhost:11434/api/generate"
+  provider: "gemini"  # Options: "gemini", "deepseek", "openai", "fallback"
+  model: "gemini-1.5-flash"
+  endpoint: "https://generativelanguage.googleapis.com/v1beta/models"
   temperature: 0.2
   instruction: "Write concise, evidence-based portfolio observations."
 
@@ -80,21 +82,23 @@ pages:
 
   - id: holdings_insights
     enabled: true
-    title: "Portfolio - Holdings & Investment Insights"
+    title: "Portfolio - Stock Holdings"
     layout: "holdings_dashboard"
     sections:
       - id: top_holdings
-        title: "Top 10 Holdings & Benchmark Comparison"
+        title: "Top 15 Holdings"
         type: table
         source: top_holdings_summary
-        limit: 10
-      - id: portfolio_changes
-        title: "Key Active Stock Positions & Recent Activity"
+        limit: 15
+      - id: top_overweight
+        title: "Overweight (Top 5)"
         type: table
-        source: active_stock_positions
+        source: top_overweight_stocks
         limit: 5
-      - id: risk_observations
-        title: "AI-Generated Portfolio Observations & Key Risks"
-        type: commentary_box
-        source: portfolio_insights
-        commentary: "llm_analysis"
+      - id: top_underweight
+        title: "Underweight (Top 5)"
+        type: table
+        source: top_underweight_stocks
+        limit: 5
+      - id: kpi_callout
+        text: "Active share at 32% with portfolio turnover at 41%"

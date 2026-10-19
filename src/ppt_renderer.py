@@ -503,162 +503,232 @@ class PowerPointRenderer:
     def render_holdings_dashboard(
         self,
         page_cfg: Dict[str, Any],
-        data_bundle: Dict[str, Any],
-        llm_response: Dict[str, Any],
-        slide_num: int
+        top_holdings_summary: Optional[pd.DataFrame] = None,
+        top_overweight_stocks: Optional[pd.DataFrame] = None,
+        top_underweight_stocks: Optional[pd.DataFrame] = None,
+        slide_num: int = 3,
+        kpi_callout_text: Optional[str] = None,
+        data_bundle: Optional[Dict[str, Any]] = None,
+        llm_response: Optional[Dict[str, Any]] = None,
     ):
         slide = self.prs.slides.add_slide(self.blank_layout)
-        title = page_cfg.get("title", "Portfolio - Holdings & Investment Insights")
+        title = page_cfg.get("title", "Portfolio - Stock Holdings")
         disp_date = self.report_cfg.get("display_date_page2", "March 30, 2026")
         bm = self.report_cfg.get("benchmark", "BSE 100 TRI")
 
-        footer_text = f"Source: Internal Portfolio Analytics, {bm} as of {disp_date}. Top holdings represent ~49% of Fund NAV."
+        footer_text = f"Source: Internal Portfolio Analytics, {bm} as of {disp_date}."
         self.add_slide_chrome(slide, title, slide_num, footer_text, is_page_1=False)
 
         shapes = slide.shapes
+        sections = page_cfg.get("sections", [])
 
-        # 1. Left Section: Top 10 Holdings Banner (0.25", 0.80", 6.20", 0.42")
-        b_h10 = shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.25), Inches(0.80), Inches(6.20), Inches(0.42))
-        b_h10.fill.solid()
-        b_h10.fill.fore_color.rgb = self.banner_blue
-        b_h10.line.fill.background()
-        tf = b_h10.text_frame
-        p = tf.paragraphs[0]
-        run = p.add_run()
-        run.text = " Top 10 Holdings & Benchmark Comparison"
-        run.font.name = self.font_family
-        run.font.size = Pt(13)
-        run.font.bold = True
-        run.font.color.rgb = self.text_light
+        # Fallback to data_bundle if dataframes were passed via bundle
+        if top_holdings_summary is None and data_bundle:
+            top_holdings_summary = data_bundle.get("top_holdings_summary")
+        if top_overweight_stocks is None and data_bundle:
+            top_overweight_stocks = data_bundle.get("top_overweight_stocks")
+        if top_underweight_stocks is None and data_bundle:
+            top_underweight_stocks = data_bundle.get("top_underweight_stocks")
 
-        # 2. Left Table: 12 x 5 table at (0.25", 1.28", 6.20", 5.50")
-        top_h = data_bundle.get("top_holdings_summary", pd.DataFrame())
-        t_h10 = shapes.add_table(12, 5, Inches(0.25), Inches(1.28), Inches(6.20), Inches(5.50)).table
-        t_h10.columns[0].width = Inches(2.25)
-        t_h10.columns[1].width = Inches(1.45)
-        t_h10.columns[2].width = Inches(0.80)
-        t_h10.columns[3].width = Inches(0.80)
-        t_h10.columns[4].width = Inches(0.90)
+        # -------------------------------------------------------------
+        # 1. Left Section: Top 15 Holdings (0.25", 0.80", 6.20", 0.38")
+        # -------------------------------------------------------------
+        sec_h = next((s for s in sections if s.get("id") == "top_holdings"), {})
+        title_h = sec_h.get("title", "Top 15 Holdings")
+        limit_h = sec_h.get("limit", 15)
 
-        # Header Row 0
+        b_h = shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(0.25), Inches(0.80), Inches(6.20), Inches(0.38))
+        b_h.fill.solid()
+        b_h.fill.fore_color.rgb = self.banner_blue
+        b_h.line.fill.background()
+        tf_h = b_h.text_frame
+        p_h = tf_h.paragraphs[0]
+        run_h = p_h.add_run()
+        run_h.text = f" {title_h}"
+        run_h.font.name = self.font_family
+        run_h.font.size = Pt(13)
+        run_h.font.bold = True
+        run_h.font.color.rgb = self.text_light
+
+        # Left Table: (Header + limit_h + Total row) = limit_h + 2 rows
+        num_h_rows = limit_h + 2
+        t_h = shapes.add_table(num_h_rows, 5, Inches(0.25), Inches(1.22), Inches(6.20), Inches(5.60)).table
+        t_h.columns[0].width = Inches(2.25)
+        t_h.columns[1].width = Inches(1.45)
+        t_h.columns[2].width = Inches(0.80)
+        t_h.columns[3].width = Inches(0.80)
+        t_h.columns[4].width = Inches(0.90)
+
         h_cols = ["Stock Name", "Sector", "Fund %", "BM %", "Active %"]
         for c_idx, hc in enumerate(h_cols):
-            self.format_cell(t_h10.cell(0, c_idx), hc, font_size=Pt(11), bold=True, color=self.text_light, align=PP_ALIGN.CENTER if c_idx >= 2 else PP_ALIGN.LEFT, bg_color=self.banner_blue)
+            self.format_cell(t_h.cell(0, c_idx), hc, font_size=Pt(10.5), bold=True, color=self.text_light, align=PP_ALIGN.CENTER if c_idx >= 2 else PP_ALIGN.LEFT, bg_color=self.banner_blue)
 
+        df_top_h = top_holdings_summary if top_holdings_summary is not None else pd.DataFrame()
         sum_fund = 0.0
         sum_bm = 0.0
-        for i in range(1, 11):
+        for i in range(1, limit_h + 1):
             bg = self.zebra_grey if i % 2 == 1 else self.text_light
-            if i - 1 < len(top_h):
-                r = top_h.iloc[i - 1]
-                sname = str(r.get("Stock_Name", ""))
-                sec = str(r.get("Sector", ""))
+            if i - 1 < len(df_top_h):
+                r = df_top_h.iloc[i - 1]
+                sname = str(r.get("Stock_Name", r.get("securityname", "")))
+                sec = str(r.get("Sector", r.get("sector", "")))
                 fw = float(r.get("Fund_Weight", 0.0))
                 bw = float(r.get("BM_Weight", 0.0))
-                aw = float(r.get("Active_Weight", 0.0))
+                aw = float(r.get("Active_Weight", fw - bw))
                 sum_fund += fw
                 sum_bm += bw
 
-                self.format_cell(t_h10.cell(i, 0), sname, font_size=Pt(10), bold=True, align=PP_ALIGN.LEFT, bg_color=bg)
-                self.format_cell(t_h10.cell(i, 1), sec, font_size=Pt(10), align=PP_ALIGN.LEFT, bg_color=bg)
-                self.format_cell(t_h10.cell(i, 2), f"{fw:.1f}%", font_size=Pt(10), align=PP_ALIGN.CENTER, bg_color=bg)
-                self.format_cell(t_h10.cell(i, 3), f"{bw:.1f}%", font_size=Pt(10), align=PP_ALIGN.CENTER, bg_color=bg)
+                self.format_cell(t_h.cell(i, 0), sname, font_size=Pt(9.5), bold=True, align=PP_ALIGN.LEFT, bg_color=bg)
+                self.format_cell(t_h.cell(i, 1), sec, font_size=Pt(9.5), align=PP_ALIGN.LEFT, bg_color=bg)
+                self.format_cell(t_h.cell(i, 2), f"{fw:.2f}%", font_size=Pt(9.5), align=PP_ALIGN.CENTER, bg_color=bg)
+                self.format_cell(t_h.cell(i, 3), f"{bw:.2f}%" if bw > 0 else "-", font_size=Pt(9.5), align=PP_ALIGN.CENTER, bg_color=bg)
 
-                # Color-code active weight
                 aw_color = self.positive_green if aw >= 0 else self.negative_red
                 aw_sign = "+" if aw > 0 else ""
-                self.format_cell(t_h10.cell(i, 4), f"{aw_sign}{aw:.1f}%", font_size=Pt(10), bold=True, color=aw_color, align=PP_ALIGN.CENTER, bg_color=bg)
+                self.format_cell(t_h.cell(i, 4), f"{aw_sign}{aw:.2f}%", font_size=Pt(9.5), bold=True, color=aw_color, align=PP_ALIGN.CENTER, bg_color=bg)
             else:
                 for c in range(5):
-                    self.format_cell(t_h10.cell(i, c), "", bg_color=bg)
+                    self.format_cell(t_h.cell(i, c), "", bg_color=bg)
 
-        # Row 11: Top-10 Total Row
+        # Row limit_h + 1: Total Row
+        tot_row_idx = limit_h + 1
         sum_aw = sum_fund - sum_bm
         sum_aw_color = self.positive_green if sum_aw >= 0 else self.negative_red
         sum_aw_sign = "+" if sum_aw > 0 else ""
-        self.format_cell(t_h10.cell(11, 0), "Top 10 Total", font_size=Pt(10.5), bold=True, align=PP_ALIGN.LEFT, bg_color=self.subheader_grey)
-        self.format_cell(t_h10.cell(11, 1), "-", font_size=Pt(10.5), align=PP_ALIGN.CENTER, bg_color=self.subheader_grey)
-        self.format_cell(t_h10.cell(11, 2), f"{sum_fund:.1f}%", font_size=Pt(10.5), bold=True, align=PP_ALIGN.CENTER, bg_color=self.subheader_grey)
-        self.format_cell(t_h10.cell(11, 3), f"{sum_bm:.1f}%", font_size=Pt(10.5), bold=True, align=PP_ALIGN.CENTER, bg_color=self.subheader_grey)
-        self.format_cell(t_h10.cell(11, 4), f"{sum_aw_sign}{sum_aw:.1f}%", font_size=Pt(10.5), bold=True, color=sum_aw_color, align=PP_ALIGN.CENTER, bg_color=self.subheader_grey)
+        self.format_cell(t_h.cell(tot_row_idx, 0), f"Top {limit_h} Total", font_size=Pt(10), bold=True, align=PP_ALIGN.LEFT, bg_color=self.subheader_grey)
+        self.format_cell(t_h.cell(tot_row_idx, 1), "-", font_size=Pt(10), align=PP_ALIGN.CENTER, bg_color=self.subheader_grey)
+        self.format_cell(t_h.cell(tot_row_idx, 2), f"{sum_fund:.2f}%", font_size=Pt(10), bold=True, align=PP_ALIGN.CENTER, bg_color=self.subheader_grey)
+        self.format_cell(t_h.cell(tot_row_idx, 3), f"{sum_bm:.2f}%", font_size=Pt(10), bold=True, align=PP_ALIGN.CENTER, bg_color=self.subheader_grey)
+        self.format_cell(t_h.cell(tot_row_idx, 4), f"{sum_aw_sign}{sum_aw:.2f}%", font_size=Pt(10), bold=True, color=sum_aw_color, align=PP_ALIGN.CENTER, bg_color=self.subheader_grey)
 
-        # 3. Upper-Right Banner: Key Active Stock Positions (6.62", 0.80", 6.45", 0.42")
-        b_act = shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(6.62), Inches(0.80), Inches(6.45), Inches(0.42))
-        b_act.fill.solid()
-        b_act.fill.fore_color.rgb = self.banner_blue
-        b_act.line.fill.background()
-        tf = b_act.text_frame
-        p = tf.paragraphs[0]
-        run = p.add_run()
-        run.text = " Key Active Stock Positions & Recent Activity"
-        run.font.name = self.font_family
-        run.font.size = Pt(13)
-        run.font.bold = True
-        run.font.color.rgb = self.text_light
+        # -------------------------------------------------------------
+        # 2. Upper-Right Section: Overweight (Top 5)
+        # -------------------------------------------------------------
+        sec_ow = next((s for s in sections if s.get("id") == "top_overweight"), {})
+        title_ow = sec_ow.get("title", "Overweight (Top 5)")
+        limit_ow = sec_ow.get("limit", 5)
 
-        # 4. Upper-Right Table: 6 x 4 table at (6.62", 1.28", 6.45", 2.30")
-        act_df = data_bundle.get("active_stock_positions", pd.DataFrame())
-        t_act = shapes.add_table(6, 4, Inches(6.62), Inches(1.28), Inches(6.45), Inches(2.30)).table
-        t_act.columns[0].width = Inches(1.95)
-        t_act.columns[1].width = Inches(1.65)
-        t_act.columns[2].width = Inches(0.95)
-        t_act.columns[3].width = Inches(1.90)
+        b_ow = shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(6.62), Inches(0.80), Inches(6.45), Inches(0.38))
+        b_ow.fill.solid()
+        b_ow.fill.fore_color.rgb = self.banner_blue
+        b_ow.line.fill.background()
+        tf_ow = b_ow.text_frame
+        p_ow = tf_ow.paragraphs[0]
+        run_ow = p_ow.add_run()
+        run_ow.text = f" {title_ow}"
+        run_ow.font.name = self.font_family
+        run_ow.font.size = Pt(13)
+        run_ow.font.bold = True
+        run_ow.font.color.rgb = self.text_light
 
-        act_cols = ["Stock Name", "Sector", "Active %", "Positioning Note"]
-        for c_idx, ac in enumerate(act_cols):
-            self.format_cell(t_act.cell(0, c_idx), ac, font_size=Pt(11), bold=True, color=self.text_light, align=PP_ALIGN.CENTER if c_idx == 2 else PP_ALIGN.LEFT, bg_color=self.banner_blue)
+        t_ow = shapes.add_table(limit_ow + 1, 4, Inches(6.62), Inches(1.22), Inches(6.45), Inches(2.15)).table
+        t_ow.columns[0].width = Inches(2.40)
+        t_ow.columns[1].width = Inches(1.75)
+        t_ow.columns[2].width = Inches(1.15)
+        t_ow.columns[3].width = Inches(1.15)
 
-        for i in range(1, 6):
+        ow_cols = ["Stock Name", "Sector", "Fund %", "Active %"]
+        for c_idx, oc in enumerate(ow_cols):
+            self.format_cell(t_ow.cell(0, c_idx), oc, font_size=Pt(10.5), bold=True, color=self.text_light, align=PP_ALIGN.CENTER if c_idx >= 2 else PP_ALIGN.LEFT, bg_color=self.banner_blue)
+
+        df_ow = top_overweight_stocks if top_overweight_stocks is not None else pd.DataFrame()
+        for i in range(1, limit_ow + 1):
             bg = self.zebra_grey if i % 2 == 1 else self.text_light
-            if i - 1 < len(act_df):
-                r = act_df.iloc[i - 1]
-                sname = str(r.get("Stock_Name", ""))
-                sec = str(r.get("Sector", ""))
+            if i - 1 < len(df_ow):
+                r = df_ow.iloc[i - 1]
+                sname = str(r.get("Stock_Name", r.get("securityname", "")))
+                sec = str(r.get("Sector", r.get("sector", "")))
+                fw = float(r.get("Fund_Weight", 0.0))
                 aw = float(r.get("Active_Weight", 0.0))
-                note = str(r.get("Position_Action", ""))
-                aw_color = self.positive_green if aw >= 0 else self.negative_red
-                aw_sign = "+" if aw > 0 else ""
 
-                self.format_cell(t_act.cell(i, 0), sname, font_size=Pt(10), bold=True, align=PP_ALIGN.LEFT, bg_color=bg)
-                self.format_cell(t_act.cell(i, 1), sec, font_size=Pt(10), align=PP_ALIGN.LEFT, bg_color=bg)
-                self.format_cell(t_act.cell(i, 2), f"{aw_sign}{aw:.1f}%", font_size=Pt(10), bold=True, color=aw_color, align=PP_ALIGN.CENTER, bg_color=bg)
-                self.format_cell(t_act.cell(i, 3), note, font_size=Pt(10), align=PP_ALIGN.LEFT, bg_color=bg)
+                self.format_cell(t_ow.cell(i, 0), sname, font_size=Pt(9.5), bold=True, align=PP_ALIGN.LEFT, bg_color=bg)
+                self.format_cell(t_ow.cell(i, 1), sec, font_size=Pt(9.5), align=PP_ALIGN.LEFT, bg_color=bg)
+                self.format_cell(t_ow.cell(i, 2), f"{fw:.2f}%", font_size=Pt(9.5), align=PP_ALIGN.CENTER, bg_color=bg)
+                self.format_cell(t_ow.cell(i, 3), f"+{aw:.2f}%", font_size=Pt(9.5), bold=True, color=self.positive_green, align=PP_ALIGN.CENTER, bg_color=bg)
             else:
                 for c in range(4):
-                    self.format_cell(t_act.cell(i, c), "", bg_color=bg)
+                    self.format_cell(t_ow.cell(i, c), "", bg_color=bg)
 
-        # 5. Lower-Right Banner: AI Observations (6.62", 3.75", 6.45", 0.42")
-        b_ai = shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(6.62), Inches(3.75), Inches(6.45), Inches(0.42))
-        b_ai.fill.solid()
-        b_ai.fill.fore_color.rgb = self.banner_blue
-        b_ai.line.fill.background()
-        tf = b_ai.text_frame
-        p = tf.paragraphs[0]
-        run = p.add_run()
-        run.text = " AI-Generated Portfolio Observations & Key Risks"
-        run.font.name = self.font_family
-        run.font.size = Pt(13)
-        run.font.bold = True
-        run.font.color.rgb = self.text_light
+        # -------------------------------------------------------------
+        # 3. Lower-Right Section: Underweight (Top 5)
+        # -------------------------------------------------------------
+        sec_uw = next((s for s in sections if s.get("id") == "top_underweight"), {})
+        title_uw = sec_uw.get("title", "Underweight (Top 5)")
+        limit_uw = sec_uw.get("limit", 5)
 
-        # 6. Lower-Right Content Table / Box (6.62", 4.22", 6.45", 2.65")
-        t_ai = shapes.add_table(4, 1, Inches(6.62), Inches(4.22), Inches(6.45), Inches(2.65)).table
-        t_ai.columns[0].width = Inches(6.45)
+        b_uw = shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(6.62), Inches(3.50), Inches(6.45), Inches(0.38))
+        b_uw.fill.solid()
+        b_uw.fill.fore_color.rgb = self.banner_blue
+        b_uw.line.fill.background()
+        tf_uw = b_uw.text_frame
+        p_uw = tf_uw.paragraphs[0]
+        run_uw = p_uw.add_run()
+        run_uw.text = f" {title_uw}"
+        run_uw.font.name = self.font_family
+        run_uw.font.size = Pt(13)
+        run_uw.font.bold = True
+        run_uw.font.color.rgb = self.text_light
 
-        obs = llm_response.get("portfolio_observations", [])
-        if not obs:
-            obs = ["High-quality portfolio positioning with balanced cyclical risk."]
+        t_uw = shapes.add_table(limit_uw + 1, 4, Inches(6.62), Inches(3.92), Inches(6.45), Inches(2.15)).table
+        t_uw.columns[0].width = Inches(2.40)
+        t_uw.columns[1].width = Inches(1.75)
+        t_uw.columns[2].width = Inches(1.15)
+        t_uw.columns[3].width = Inches(1.15)
 
-        # Fill table rows with observations
-        for i in range(4):
+        uw_cols = ["Stock Name", "Sector", "Fund %", "Active %"]
+        for c_idx, uc in enumerate(uw_cols):
+            self.format_cell(t_uw.cell(0, c_idx), uc, font_size=Pt(10.5), bold=True, color=self.text_light, align=PP_ALIGN.CENTER if c_idx >= 2 else PP_ALIGN.LEFT, bg_color=self.banner_blue)
+
+        df_uw = top_underweight_stocks if top_underweight_stocks is not None else pd.DataFrame()
+        for i in range(1, limit_uw + 1):
             bg = self.zebra_grey if i % 2 == 1 else self.text_light
-            if i < len(obs):
-                self._format_bullet_cell(t_ai.cell(i, 0), [obs[i]], bg_color=bg)
+            if i - 1 < len(df_uw):
+                r = df_uw.iloc[i - 1]
+                sname = str(r.get("Stock_Name", r.get("securityname", "")))
+                sec = str(r.get("Sector", r.get("sector", "")))
+                fw = float(r.get("Fund_Weight", 0.0))
+                aw = float(r.get("Active_Weight", 0.0))
+
+                self.format_cell(t_uw.cell(i, 0), sname, font_size=Pt(9.5), bold=True, align=PP_ALIGN.LEFT, bg_color=bg)
+                self.format_cell(t_uw.cell(i, 1), sec, font_size=Pt(9.5), align=PP_ALIGN.LEFT, bg_color=bg)
+                self.format_cell(t_uw.cell(i, 2), f"{fw:.2f}%" if fw > 0 else "-", font_size=Pt(9.5), align=PP_ALIGN.CENTER, bg_color=bg)
+                self.format_cell(t_uw.cell(i, 3), f"{aw:.2f}%", font_size=Pt(9.5), bold=True, color=self.negative_red, align=PP_ALIGN.CENTER, bg_color=bg)
             else:
-                self.format_cell(t_ai.cell(i, 0), "", bg_color=bg)
+                for c in range(4):
+                    self.format_cell(t_uw.cell(i, c), "", bg_color=bg)
+
+        # -------------------------------------------------------------
+        # 4. KPI Callout Box (0.25" below Underweight table)
+        # -------------------------------------------------------------
+        sec_kpi = next((s for s in sections if s.get("id") == "kpi_callout"), {})
+        kpi_msg = kpi_callout_text or sec_kpi.get("text", "Active share at 32% with portfolio turnover at 41%")
+
+        callout = shapes.add_shape(MSO_SHAPE.RECTANGLE, Inches(6.62), Inches(6.20), Inches(6.45), Inches(0.58))
+        callout.fill.solid()
+        callout.fill.fore_color.rgb = RGBColor(0xEA, 0xF2, 0xF9)
+        callout.line.color.rgb = self.banner_blue
+        callout.line.width = Pt(1.0)
+
+        tf_c = callout.text_frame
+        tf_c.word_wrap = True
+        p_c = tf_c.paragraphs[0]
+        p_c.alignment = PP_ALIGN.CENTER
+        run_c = p_c.add_run()
+        run_c.text = f"Key Metric Callout:  {kpi_msg}"
+        run_c.font.name = self.font_family
+        run_c.font.size = Pt(11)
+        run_c.font.bold = True
+        run_c.font.color.rgb = self.banner_blue
 
     def save(self, output_path: str):
-        """Saves final presentation."""
+        """Saves final presentation with file lock resilience."""
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
-        self.prs.save(output_path)
-        print(f"Presentation saved successfully to {output_path}")
+        try:
+            self.prs.save(output_path)
+            print(f"Presentation saved successfully to {output_path}")
+        except PermissionError:
+            base, ext = os.path.splitext(output_path)
+            alt_path = f"{base}_new{ext}"
+            print(f"Warning: '{output_path}' is currently open in PowerPoint or locked. Saving to '{alt_path}' instead.")
+            self.prs.save(alt_path)
+            print(f"Presentation saved successfully to {alt_path}")

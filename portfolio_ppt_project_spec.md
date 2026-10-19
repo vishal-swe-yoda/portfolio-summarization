@@ -1,4 +1,4 @@
-# Project Plan & Technical Specification: Config-Driven Portfolio PPT Generator
+ # Project Plan & Technical Specification: Config-Driven Portfolio PPT Generator
 
 ## 1. Project Overview & Core Objectives
 
@@ -6,7 +6,7 @@ Build a modular, configuration-driven Python application that generates fixed-fo
 
 The system separates quantitative data processing from qualitative analysis and slide rendering:
 - **Deterministic Data Engine (`pandas`)**: Reads portfolio holdings, benchmark weights, and summary metrics from Excel; cleans data; and computes sector exposures, active weights, top overweight/underweight positions, and concentration ratios.
-- **Qualitative AI Analyst (`Ollama` / Low-Cost LLM API)**: Receives only pre-calculated metrics in a strict JSON payload and returns structured, evidence-based sector commentary and portfolio risk observations in JSON format. The LLM never performs mathematical calculations.
+- **Qualitative AI Analyst (`GeminiStrategy` / `DeepSeekStrategy` via Strategy Pattern)**: Receives only pre-calculated metrics in a strict JSON payload and returns structured, evidence-based sector commentary and portfolio risk observations in JSON format. The LLM never performs mathematical calculations. Features resilient offline fallback.
 - **Composite Chart Engine (`matplotlib`)**: Generates high-resolution (300 DPI) dual-band horizontal bar charts displaying both absolute allocation (`% NAV`) and relative active positions (`Active Weight %` with green/red directional bars) on a unified horizontal axis.
 - **Declarative Slide Renderer (`python-pptx` + `PyYAML`)**: Reads `report_config.yaml` and `metric_rules.yaml` to assemble 16:9 widescreen slides using reusable layout renderers (`three_table_dashboard`, `sector_analysis`, and `holdings_dashboard`). Adding or reordering sections, changing row limits, or toggling optional slides requires only YAML edits unless a brand-new layout archetype is introduced.
 
@@ -18,7 +18,7 @@ The system separates quantitative data processing from qualitative analysis and 
 | :--- | :--- | :--- | :--- | :--- |
 | **1. Configuration** | `ConfigLoader` (`PyYAML`) | `report_config.yaml`, `metric_rules.yaml` | Validated Python config dicts | Defines active pages, layouts, section data sources, row limits, theme palette, and metric formatting rules. |
 | **2. Data Engine** | `PortfolioDataEngine` (`pandas`) | Portfolio `.xlsx` + `metric_rules.yaml` | Normalized DataFrames & metric tuples | Cleans raw sheets, computes `Active_Weight = Fund_Weight - BM_Weight`, ranks overweight/underweight sectors, and formats summary metrics. |
-| **3. AI Commentary** | `LLMCommentaryEngine` (`urllib` / SDK) | Pre-calculated JSON payload + optional research notes | Structured commentary JSON + audit log | Generates concise bulleted observations and risks for top overweight/underweight sectors and overall portfolio positioning. |
+| **3. AI Commentary** | `LLMCommentaryEngine` (Strategy Pattern) | Pre-calculated JSON payload + optional research notes | Structured commentary JSON + audit log | Dispatches request via `GeminiStrategy`, `DeepSeekStrategy`, or `OfflineFallbackStrategy` to generate bulleted observations and portfolio risks. |
 | **4. Charting** | `ChartGenerator` (`matplotlib`) | `sector_summary` DataFrame + theme config | `chart_sector_allocation.png` (300 DPI) | Renders the dual-band `% NAV` and green/red `Active Weight (%)` horizontal bar chart with row gridlines. |
 | **5. Rendering** | `PowerPointRenderer` (`python-pptx`) | Config + DataFrames + LLM JSON + Chart PNG | Final `.pptx` presentation | Dispatches layout renderers, applies UTI Mutual Fund theme chrome, builds styled tables, embeds charts, and saves the deck. |
 
@@ -30,7 +30,7 @@ portfolio-ppt-generator/
 │   ├── report_config.yaml          # Page definitions, layouts, sections, theme, LLM config
 │   └── metric_rules.yaml           # Formatting and aggregation rules for portfolio metrics
 ├── data/
-│   └── sample_portfolio_data.xlsx  # Input Excel workbook (Summary, Sector, Holdings tabs)
+│   └── ValEqAnalysis_30.03.26 - Copy.xlsx  # User-provided source portfolio Excel workbook
 ├── assets/
 │   └── uti_logo.png                # Brand logo placed in top-right slide header
 ├── output/
@@ -39,11 +39,13 @@ portfolio-ppt-generator/
 ├── src/
 │   ├── __init__.py
 │   ├── data_engine.py              # PortfolioDataEngine (pandas reading, cleaning, aggregation)
-│   ├── llm_engine.py               # LLMCommentaryEngine (JSON prompt builder, Ollama/OpenAI client)
+│   ├── llm_engine.py               # LLMCommentaryEngine (Strategy Pattern: Gemini, DeepSeek, Offline)
 │   ├── chart_engine.py             # ChartGenerator (matplotlib dual-band horizontal bar chart)
 │   └── ppt_renderer.py             # PowerPointRenderer (layout registry & python-pptx builders)
 ├── main.py                         # CLI entrypoint orchestrating the 5-stage pipeline
-└── requirements.txt                # pandas, openpyxl, matplotlib, python-pptx, PyYAML
+├── test_pipeline.py                # Component test suite
+├── requirements.txt                # pandas, openpyxl, matplotlib, python-pptx, PyYAML
+└── README.md                       # Comprehensive system documentation
 ```
 
 ## 3. Technology Stack & Requirements
@@ -54,7 +56,7 @@ portfolio-ppt-generator/
 | **Charts & Diagrams** | `matplotlib`, `numpy` | `matplotlib>=3.7.0` using headless `Agg` backend at 300 DPI |
 | **Create Slides** | `python-pptx`, `lxml` | `python-pptx>=0.6.21` with custom XML cell border helpers |
 | **Parse Configuration** | `PyYAML` | `PyYAML>=6.0` for `report_config.yaml` and `metric_rules.yaml` |
-| **AI Commentary** | Local `Ollama` or OpenAI/Gemini API | Standard library `urllib.request` (zero extra dependencies) with structured JSON output mode and deterministic offline fallback |
+| **AI Commentary** | Google Gemini / DeepSeek API (Strategy Pattern) | Standard library `urllib.request` (zero extra dependencies) with structured JSON output mode, `GeminiStrategy`, `DeepSeekStrategy`, and deterministic offline fallback |
 
 ## 4. Input Excel Data Specification (`sample_portfolio_data.xlsx`)
 
@@ -131,9 +133,9 @@ report:
   logo_path: "assets/uti_logo.png"
 
 llm:
-  provider: "ollama"  # Options: "ollama", "openai", "fallback"
-  model: "llama3.1:8b"
-  endpoint: "http://localhost:11434/api/generate"
+  provider: "gemini"  # Options: "gemini", "deepseek", "openai", "fallback"
+  model: "gemini-1.5-flash"
+  endpoint: "https://generativelanguage.googleapis.com/v1beta/models"
   temperature: 0.2
   instruction: "Write concise, evidence-based portfolio observations."
 
@@ -354,7 +356,7 @@ metrics:
    ```
 3. **Resilience & Auditability**:
    - Save both `llm_input_payload` and `llm_output` to `output/intermediate/llm_payload_and_response.json`.
-   - If the local Ollama server or external API is unreachable, automatically fall back to parsing the `Research_Commentary` column from `Sector_Allocation` so slide generation never fails offline.
+   - Uses the Strategy Pattern (`GeminiStrategy`, `DeepSeekStrategy`, `OpenAIStrategy`, `OfflineFallbackStrategy`). If an external API is unreachable or no API key is configured, automatically falls back to `OfflineFallbackStrategy` parsing the `Research_Commentary` column from `Sector_Allocation` and composition tiers so slide generation never fails offline.
 
 ### Component 3: `ChartGenerator` (`src/chart_engine.py`)
 
@@ -417,14 +419,14 @@ To match the reference Slide 2 chart (`Sectoral Breakdown & Active Position (%)`
 1. **Step 1 — Scaffold Project & Configs**:
    - Create directory structure (`config/`, `data/`, `assets/`, `src/`, `output/intermediate/`).
    - Write `config/report_config.yaml` and `config/metric_rules.yaml`.
-2. **Step 2 — Generate Sample Input Workbook**:
-   - Build `data/sample_portfolio_data.xlsx` with `Portfolio_Summary`, `Sector_Allocation`, and `Holdings_Data` sheets populated with the March 30, 2026 (`BSE 100 TRI`) dataset.
-3. **Step 3 — Implement Data & LLM Engines**:
-   - Implement `PortfolioDataEngine` in `src/data_engine.py` and verify via unit tests that `Active_Weight` calculations and top-3 overweight/underweight rankings match expected values (`Consumer Services +3.6%`, `Consumer Durables +3.1%`, `IT +2.3%`; `Power -3.2%`, `FMCG -1.9%`, `Financial Services -1.7%`).
-   - Implement `LLMCommentaryEngine` in `src/llm_engine.py` with JSON schema validation and offline fallback.
+2. **Step 2 — Ingest Source Portfolio Workbook**:
+   - Ingest user-provided portfolio workbook (`data/ValEqAnalysis_30.03.26 - Copy.xlsx`) containing `Stock`, `Sector`, and `Tiers` sheets. No sample input generator script is required or created.
+3. **Step 3 — Implement Data & LLM Strategy Engines**:
+   - Implement `PortfolioDataEngine` in `src/data_engine.py` to calculate `Active_Weight` and extract top overweight/underweight sectors and active stock positions.
+   - Implement `LLMCommentaryEngine` in `src/llm_engine.py` using the Strategy Pattern (`GeminiStrategy`, `DeepSeekStrategy`, `OpenAIStrategy`, `OfflineFallbackStrategy`) with JSON schema validation.
 4. **Step 4 — Implement Chart & PPTX Renderers**:
-   - Implement `ChartGenerator.render_sector_chart()` in `src/chart_engine.py` and verify that the vertical reference lines stop cleanly below the `"% NAV"` and `"Active Weight (%)"` headers.
+   - Implement `ChartGenerator.render_sector_chart()` in `src/chart_engine.py` and verify dual-band 300 DPI horizontal bar chart generation.
    - Implement `PowerPointRenderer` in `src/ppt_renderer.py` with custom XML cell border styling (`a:lnL`, `a:lnR`, `a:lnT`, `a:lnB`) and zero text/table collisions.
 5. **Step 5 — End-to-End Execution & Visual QA**:
-   - Run `python3 main.py --config config/report_config.yaml --rules config/metric_rules.yaml --excel data/sample_portfolio_data.xlsx --output output/uti_portfolio_review.pptx`.
-   - Convert `output/uti_portfolio_review.pptx` to PDF/PNG via headless LibreOffice and verify that all text runs are `>= 10pt`, no table cells overflow or collide with footers, and all three slides match the target visual layout.
+   - Run `python main.py --config config/report_config.yaml --rules config/metric_rules.yaml --excel "data/ValEqAnalysis_30.03.26 - Copy.xlsx" --output output/uti_portfolio_review.pptx`.
+   - Verify that all text runs are `>= 10pt`, no table cells overflow or collide with footers, and all slides match the target institutional visual layout.

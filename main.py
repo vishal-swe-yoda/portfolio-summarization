@@ -71,12 +71,24 @@ def main():
         print("Please place the Excel file at that path or provide --excel <path>.")
         sys.exit(1)
 
-    data_engine = PortfolioDataEngine(excel_path=args.excel, metric_rules_path=rules_path)
+    report_cfg = config.get("report", {})
+    fund_name = report_cfg.get("fund_name", "UTI Multi Cap Fund")
+    bm_name = report_cfg.get("bm_name", "BSE100")
+
+    data_engine = PortfolioDataEngine(
+        excel_path=args.excel,
+        metric_rules_path=rules_path,
+        fund_name=fund_name,
+        bm_name=bm_name
+    )
     data_engine.load_data()
     data_bundle = data_engine.get_data_bundle()
     print(f"  - Sectors processed: {len(data_bundle['sector_summary'])}")
-    print(f"  - Holdings processed: {len(data_bundle['holdings_df'])}")
-    print(f"  - Quants & Ratios: {len(data_bundle['quants_ratios'])}")
+    print(f"  - Stock DataFrames for Slide 3 (from _process_stock_sheet):")
+    print(f"      * Top Holdings: {len(data_engine.top_holdings_summary)} rows")
+    print(f"      * Top Overweight Stocks: {len(data_engine.top_overweight_stocks)} rows")
+    print(f"      * Top Underweight Stocks: {len(data_engine.top_underweight_stocks)} rows")
+    print(f"  - Exported 3 stock DataFrames to: output/intermediate/pandas_output.[xlsx|txt|json]")
 
     # 3. Generate AI Commentary
     print(f"\n[Stage 3/5] Generating qualitative commentary & portfolio observations...")
@@ -123,11 +135,15 @@ def main():
             )
             slide_counter += 1
         elif layout == "holdings_dashboard":
+            kpi_sec = next((s for s in page.get("sections", []) if s.get("id") == "kpi_callout"), {})
+            kpi_text = kpi_sec.get("text", "Active share at 32% with portfolio turnover at 41%")
             renderer.render_holdings_dashboard(
                 page_cfg=page,
-                data_bundle=data_bundle,
-                llm_response=llm_response,
-                slide_num=slide_counter
+                top_holdings_summary=data_engine.top_holdings_summary,
+                top_overweight_stocks=data_engine.top_overweight_stocks,
+                top_underweight_stocks=data_engine.top_underweight_stocks,
+                slide_num=slide_counter,
+                kpi_callout_text=kpi_text,
             )
             slide_counter += 1
         else:
