@@ -10,7 +10,6 @@ __pycache__/
 
 # Output Directory
 output/
-output
 
 # Virtual Environment / Local Workspace Folder
 vpoc/
