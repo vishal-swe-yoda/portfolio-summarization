@@ -13,14 +13,55 @@ import json
 import os
 import urllib.request
 import urllib.error
+import sys
+import re
+
+def _load_env_safely():
+    """Loads environment variables from .env if not already set in environment."""
+    try:
+        from dotenv import load_dotenv
+        load_dotenv()
+    except Exception:
+        pass
+
+    for candidate in [".env", os.path.join(os.path.dirname(__file__), "..", ".env"), os.path.join(os.getcwd(), ".env")]:
+        if os.path.exists(candidate):
+            try:
+                with open(candidate, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith("#") and "=" in line:
+                            k, v = line.split("=", 1)
+                            k = k.strip()
+                            v = v.strip().strip("'\"")
+                            if k and k not in os.environ:
+                                os.environ[k] = v
+            except Exception:
+                pass
+
+_load_env_safely()
+
 try:
     from google import genai
     from google.genai import types
     HAS_GENAI = True
 except ImportError:
-    genai = None
-    types = None
-    HAS_GENAI = False
+    # Auto-detect local virtualenv site-packages if running outside venv
+    vpoc_site = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "vpoc", "Lib", "site-packages"))
+    if os.path.exists(vpoc_site) and vpoc_site not in sys.path:
+        sys.path.insert(0, vpoc_site)
+        try:
+            from google import genai
+            from google.genai import types
+            HAS_GENAI = True
+        except ImportError:
+            genai = None
+            types = None
+            HAS_GENAI = False
+    else:
+        genai = None
+        types = None
+        HAS_GENAI = False
 
 SYSTEM_INSTRUCTION = (
     "You are an institutional portfolio analyst. Return ONLY valid JSON matching this exact schema:\n"
@@ -84,34 +125,77 @@ class GeminiStrategy(LLMStrategy):
         else:
             self.client = None
 
-    def generate(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        if not HAS_GENAI:
-            print("GeminiStrategy: google-genai library not installed.")
-            return None
-        if not self.client:
-            print("GeminiStrategy: API key not found.")
+    def _generate_via_rest(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """Direct REST fallback to Google Gemini v1beta endpoint using urllib (zero external dependencies)."""
+        if not self.api_key:
             return None
 
+        model_name = self.model
+        endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={self.api_key}"
         prompt = (
             f"{SYSTEM_INSTRUCTION}\n\n"
             f"PORTFOLIO METRICS DATA:\n{json.dumps(payload, indent=2)}"
         )
-
+        request_body = {
+            "contents": [
+                {
+                    "parts": [{"text": prompt}]
+                }
+            ],
+            "generationConfig": {
+                "temperature": self.temperature,
+                "responseMimeType": "application/json"
+            }
+        }
         try:
-            response = self.client.models.generate_content(
-                model="gemini-3.8-flash",
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    temperature=self.temperature,
-                    response_mime_type="application/json",
-                ),
-            )
-
-            return json.loads(response.text or "")
-
+            req_data = json.dumps(request_body).encode("utf-8")
+            headers = {"Content-Type": "application/json"}
+            req = urllib.request.Request(endpoint, data=req_data, headers=headers, method="POST")
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                if resp.status == 200:
+                    resp_json = json.loads(resp.read().decode("utf-8"))
+                    candidates = resp_json.get("candidates", [])
+                    if candidates:
+                        content_parts = candidates[0].get("content", {}).get("parts", [])
+                        if content_parts:
+                            text = content_parts[0].get("text", "")
+                            text = re.sub(r"^```(?:json)?\s*", "", text.strip())
+                            text = re.sub(r"\s*```$", "", text.strip())
+                            return json.loads(text)
         except Exception as e:
-            print(f"GeminiStrategy error: {e}")
+            print(f"Gemini direct REST API error: {e}")
+        return None
+
+    def generate(self, payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        if not self.api_key:
+            print("GeminiStrategy: No API key found. Set GEMINI_API_KEY or GOOGLE_API_KEY in .env or environment.")
             return None
+
+        # 1. Try google.genai SDK
+        if HAS_GENAI and self.client:
+            prompt = (
+                f"{SYSTEM_INSTRUCTION}\n\n"
+                f"PORTFOLIO METRICS DATA:\n{json.dumps(payload, indent=2)}"
+            )
+            try:
+                response = self.client.models.generate_content(
+                    model=self.model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        temperature=self.temperature,
+                        response_mime_type="application/json",
+                    ),
+                )
+                if response and response.text:
+                    text = response.text.strip()
+                    text = re.sub(r"^```(?:json)?\s*", "", text)
+                    text = re.sub(r"\s*```$", "", text)
+                    return json.loads(text)
+            except Exception as e:
+                print(f"GeminiStrategy SDK error: {e}. Trying direct REST fallback...")
+
+        # 2. Try direct REST fallback
+        return self._generate_via_rest(payload)
 
 
 # =============================================================================

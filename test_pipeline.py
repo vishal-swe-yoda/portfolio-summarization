@@ -72,6 +72,12 @@ class TestPortfolioComponents(unittest.TestCase):
         strat_fallback = LLMStrategyFactory.get_strategy("fallback", self.config, data_bundle)
         self.assertIsInstance(strat_fallback, OfflineFallbackStrategy)
 
+    def test_gemini_strategy_api_key_loading(self):
+        """Verifies that GeminiStrategy properly loads the API key from .env outside debugger mode."""
+        strat = GeminiStrategy(self.config)
+        self.assertIsNotNone(strat.api_key)
+        self.assertEqual(strat.model, "gemini-3.8-flash")
+
     def test_llm_fallback_generation(self):
         engine = LLMCommentaryEngine(self.config)
         ow_df = pd.DataFrame([
@@ -278,8 +284,126 @@ class TestPortfolioComponents(unittest.TestCase):
                 slide_idx += 1
 
         test_out = "output/intermediate/test_presentation.pptx"
-        renderer.save(test_out)
-        self.assertTrue(os.path.exists(test_out) or os.path.exists("output/intermediate/test_presentation_new.pptx"))
+        saved = renderer.save(test_out)
+        self.assertIsNotNone(saved)
+        self.assertTrue(os.path.exists(saved))
+
+    def test_save_resilience_and_re_saving(self):
+        """Verifies that PermissionError on primary save triggers re-saving to alternative path."""
+        from unittest.mock import MagicMock
+        renderer = PowerPointRenderer(self.config)
+        
+        # Mock prs.save so 1st call raises PermissionError, 2nd call succeeds
+        mock_save = MagicMock()
+        mock_save.side_effect = [PermissionError("File locked"), None]
+        renderer.prs.save = mock_save
+
+        out_path = "output/intermediate/test_locked.pptx"
+        saved = renderer.save(out_path)
+
+        # Should have attempted primary, then alternative path
+        self.assertEqual(mock_save.call_count, 2)
+        self.assertEqual(saved, "output/intermediate/test_locked_new.pptx")
+
+    def test_save_graceful_re_saving_failure_handling(self):
+        """Verifies that re-saving failure is handled gracefully with error logging and returns None."""
+        from unittest.mock import MagicMock
+        renderer = PowerPointRenderer(self.config)
+
+        # Mock prs.save so all save attempts raise PermissionError
+        mock_save = MagicMock()
+        mock_save.side_effect = PermissionError("Permanent lock")
+        renderer.prs.save = mock_save
+
+        out_path = "output/intermediate/test_permanently_locked.pptx"
+        # Should NOT raise an exception; must handle gracefully
+        saved = renderer.save(out_path)
+        self.assertIsNone(saved)
+
+    def test_run_pipeline_function(self):
+        """Verifies programmatic execution of run_pipeline with sequence numbering."""
+        from main import run_pipeline
+        if os.path.exists(self.excel_path):
+            test_seq = 888
+            res = run_pipeline(self.excel_path, sequence_num=test_seq)
+            self.assertEqual(res["status"], "success")
+            self.assertEqual(res["output_file"], f"output_{test_seq}.pptx")
+            self.assertTrue(os.path.exists(res["output_path"]))
+
+    def test_allocate_next_sequence_number(self):
+        """Verifies thread-safe sequence number allocation."""
+        from app import allocate_next_sequence_number
+        seq = allocate_next_sequence_number("data", "output")
+        self.assertIsInstance(seq, int)
+        self.assertGreaterEqual(seq, 1)
+
+    def test_api_upload_invalid_extension(self):
+        """Verifies that non-Excel extensions return HTTP 400."""
+        from fastapi.testclient import TestClient
+        from app import app
+
+        client = TestClient(app)
+        res = client.post(
+            "/upload",
+            files={"file": ("test.pdf", b"%PDF-dummy-content", "application/pdf")}
+        )
+        self.assertEqual(res.status_code, 400)
+        json_resp = res.json()
+        self.assertEqual(json_resp["status"], "error")
+        self.assertIn("Invalid file format", json_resp["message"])
+
+    def test_api_upload_empty_file(self):
+        """Verifies that empty file uploads return HTTP 400."""
+        from fastapi.testclient import TestClient
+        from app import app
+
+        client = TestClient(app)
+        res = client.post(
+            "/upload",
+            files={"file": ("empty.xlsx", b"", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
+        )
+        self.assertEqual(res.status_code, 400)
+        json_resp = res.json()
+        self.assertEqual(json_resp["status"], "error")
+        self.assertIn("empty", json_resp["message"].lower())
+
+
+    def test_swagger_ui_and_openapi(self):
+        """Verifies that Swagger UI and OpenAPI specification endpoints are active."""
+        from fastapi.testclient import TestClient
+        from app import app
+
+        client = TestClient(app)
+        res_docs = client.get("/docs")
+        self.assertEqual(res_docs.status_code, 200)
+
+        res_openapi = client.get("/openapi.json")
+        self.assertEqual(res_openapi.status_code, 200)
+        openapi_data = res_openapi.json()
+        self.assertIn("paths", openapi_data)
+        self.assertIn("/upload", openapi_data["paths"])
+        self.assertIn("/presentations", openapi_data["paths"])
+        self.assertIn("/download/{filename}", openapi_data["paths"])
+
+    def test_root_redirect_to_docs(self):
+        """Verifies that accessing root redirects to the interactive Swagger UI."""
+        from fastapi.testclient import TestClient
+        from app import app
+
+        client = TestClient(app)
+        res = client.get("/", follow_redirects=False)
+        self.assertIn(res.status_code, [302, 307])
+        self.assertEqual(res.headers["location"], "/docs")
+
+    def test_presentations_endpoint(self):
+        """Verifies the presentations list endpoint."""
+        from fastapi.testclient import TestClient
+        from app import app
+
+        client = TestClient(app)
+        res = client.get("/presentations")
+        self.assertEqual(res.status_code, 200)
+        self.assertIsInstance(res.json(), list)
 
 
 if __name__ == "__main__":

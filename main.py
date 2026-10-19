@@ -1,5 +1,5 @@
 """
-Main CLI entrypoint orchestrating the 5-stage portfolio presentation pipeline:
+Main CLI entrypoint and programmatic pipeline orchestrator:
 1. Configuration loading (report_config.yaml, metric_rules.yaml)
 2. PortfolioDataEngine (Excel reading, cleaning, metric calculations)
 3. LLMCommentaryEngine (AI observations with offline fallback)
@@ -10,7 +10,14 @@ Main CLI entrypoint orchestrating the 5-stage portfolio presentation pipeline:
 import argparse
 import os
 import sys
+from typing import Dict, Any, Optional
 import yaml
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
 
 from src.data_engine import PortfolioDataEngine
 from src.llm_engine import LLMCommentaryEngine
@@ -37,8 +44,8 @@ def parse_args():
     )
     parser.add_argument(
         "--output",
-        default="output/uti_portfolio_review.pptx",
-        help="Path for output presentation (default: output/uti_portfolio_review.pptx)"
+        default=None,
+        help="Path for output presentation (default: output/uti_portfolio_review.pptx or output_{seq}.pptx)"
     )
     return parser.parse_args()
 
@@ -50,78 +57,85 @@ def load_yaml(file_path: str) -> dict:
         return yaml.safe_load(f) or {}
 
 
-def main():
-    args = parse_args()
-    print("=" * 70)
-    print("  CONFIG-DRIVEN INSTITUTIONAL PORTFOLIO PPT GENERATOR")
-    print("=" * 70)
+def run_pipeline(
+    excel_path: str,
+    output_path: Optional[str] = None,
+    config_path: str = "config/report_config.yaml",
+    rules_path: Optional[str] = "config/metric_rules.yaml",
+    sequence_num: Optional[int] = None
+) -> Dict[str, Any]:
+    """
+    Executes the 5-stage portfolio PPT generation pipeline for a given Excel file.
+    
+    Args:
+        excel_path: Path to the input Excel workbook (.xlsx or .xls)
+        output_path: Optional custom output presentation path
+        config_path: Path to report_config.yaml
+        rules_path: Path to metric_rules.yaml
+        sequence_num: Optional sequence number to align input and output filenames
+        
+    Returns:
+        Dict containing execution status, input_file, output_file, and output_path.
+    """
+    if not os.path.exists(excel_path):
+        raise FileNotFoundError(f"Excel workbook not found at: {excel_path}")
+
+    # Determine output presentation path
+    if not output_path:
+        if sequence_num is not None:
+            output_path = os.path.join("output", f"output_{sequence_num}.pptx")
+        else:
+            output_path = os.path.join("output", "uti_portfolio_review.pptx")
+
+    output_dir = os.path.dirname(output_path) or "output"
+    os.makedirs(output_dir, exist_ok=True)
+
+    intermediate_dir = os.path.join(output_dir, "intermediate")
+    os.makedirs(intermediate_dir, exist_ok=True)
 
     # 1. Load Configurations
-    print(f"\n[Stage 1/5] Loading configuration files...")
-    config = load_yaml(args.config)
-    rules_path = args.rules if os.path.exists(args.rules) else None
-    print(f"  - Config loaded: {args.config}")
-    if rules_path:
-        print(f"  - Metric rules loaded: {rules_path}")
+    config = load_yaml(config_path)
+    active_rules_path = rules_path if (rules_path and os.path.exists(rules_path)) else None
 
     # 2. Ingest and Process Data
-    print(f"\n[Stage 2/5] Reading and processing Excel workbook: {args.excel}")
-    if not os.path.exists(args.excel):
-        print(f"Error: Excel file does not exist at '{args.excel}'.")
-        print("Please place the Excel file at that path or provide --excel <path>.")
-        sys.exit(1)
-
     report_cfg = config.get("report", {})
     fund_name = report_cfg.get("fund_name", "UTI Multi Cap Fund")
     bm_name = report_cfg.get("bm_name", "BSE100")
 
     data_engine = PortfolioDataEngine(
-        excel_path=args.excel,
-        metric_rules_path=rules_path,
+        excel_path=excel_path,
+        metric_rules_path=active_rules_path,
         fund_name=fund_name,
         bm_name=bm_name
     )
     data_engine.load_data()
     data_bundle = data_engine.get_data_bundle()
-    print(f"  - Sectors processed: {len(data_bundle['sector_summary'])}")
-    print(f"  - Stock DataFrames for Slide 3 (from _process_stock_sheet):")
-    print(f"      * Top Holdings: {len(data_engine.top_holdings_summary)} rows")
-    print(f"      * Top Overweight Stocks: {len(data_engine.top_overweight_stocks)} rows")
-    print(f"      * Top Underweight Stocks: {len(data_engine.top_underweight_stocks)} rows")
-    print(f"  - Exported 3 stock DataFrames to: output/intermediate/pandas_output.[xlsx|txt|json]")
 
-    # 3. Generate AI Commentary
-    print(f"\n[Stage 3/5] Generating qualitative commentary & portfolio observations...")
-    intermediate_dir = os.path.join(os.path.dirname(args.output), "intermediate")
-    os.makedirs(intermediate_dir, exist_ok=True)
-    
+    # Intermediate filename prefix (namespaced by sequence number if present)
+    prefix = f"pandas_output_{sequence_num}" if sequence_num is not None else "pandas_output"
+    data_engine.save_pandas_output(output_dir=intermediate_dir, filename_base=prefix)
+
+    # 3. Generate Qualitative Commentary
     llm_engine = LLMCommentaryEngine(config=config)
     llm_response = llm_engine.generate_commentary(data_bundle=data_bundle, output_audit_dir=intermediate_dir)
-    print(f"  - Overweight commentary items: {len(llm_response.get('overweight_commentary', []))}")
-    print(f"  - Underweight commentary items: {len(llm_response.get('underweight_commentary', []))}")
-    print(f"  - Portfolio observations logged to {intermediate_dir}/llm_payload_and_response.json")
 
-    # 4. Generate Composite Chart
-    print(f"\n[Stage 4/5] Rendering dual-band horizontal bar chart (300 DPI)...")
+    # 4. Generate Composite Sector Allocation Chart
     theme_cfg = config.get("themes", {}).get(config.get("report", {}).get("theme", "uti_blue"), {})
     chart_gen = ChartGenerator(theme_config=theme_cfg)
-    chart_output = os.path.join(intermediate_dir, "chart_sector_allocation.png")
+    chart_filename = f"chart_sector_{sequence_num}.png" if sequence_num is not None else "chart_sector_allocation.png"
+    chart_output = os.path.join(intermediate_dir, chart_filename)
     chart_gen.render_sector_chart(data_bundle["sector_summary"], output_path=chart_output)
-    print(f"  - Chart saved: {chart_output}")
 
     # 5. Assemble PowerPoint Presentation
-    print(f"\n[Stage 5/5] Assembling 16:9 PowerPoint presentation...")
     renderer = PowerPointRenderer(config=config)
-
     pages = config.get("pages", [])
     slide_counter = 1
+
     for page in pages:
         if not page.get("enabled", True):
             continue
 
         layout = page.get("layout")
-        print(f"  - Rendering Slide {slide_counter}: [{layout}] - {page.get('title', '')}")
-
         if layout == "three_table_dashboard":
             renderer.render_three_table_dashboard(page_cfg=page, data_bundle=data_bundle, slide_num=slide_counter)
             slide_counter += 1
@@ -146,11 +160,38 @@ def main():
                 kpi_callout_text=kpi_text,
             )
             slide_counter += 1
-        else:
-            print(f"  - Warning: Unknown layout archetype '{layout}'. Skipping.")
 
-    renderer.save(args.output)
-    print(f"\nSuccessfully generated presentation: {args.output}")
+    saved_path = renderer.save(output_path)
+    if not saved_path or not os.path.exists(saved_path):
+        raise IOError(f"Failed to generate or save presentation to '{output_path}'.")
+
+    return {
+        "status": "success",
+        "input_file": os.path.basename(excel_path),
+        "output_file": os.path.basename(saved_path),
+        "output_path": saved_path,
+        "message": "File processed successfully"
+    }
+
+
+def main():
+    args = parse_args()
+    print("=" * 70)
+    print("  CONFIG-DRIVEN INSTITUTIONAL PORTFOLIO PPT GENERATOR")
+    print("=" * 70)
+
+    try:
+        result = run_pipeline(
+            excel_path=args.excel,
+            output_path=args.output,
+            config_path=args.config,
+            rules_path=args.rules
+        )
+        print(f"\nSuccessfully generated presentation: {result['output_path']}")
+    except Exception as e:
+        print(f"\nExecution failed: {e}")
+        sys.exit(1)
+
     print("=" * 70)
 
 

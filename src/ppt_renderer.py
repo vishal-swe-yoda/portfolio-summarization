@@ -6,6 +6,7 @@ and layout renderers: three_table_dashboard, sector_analysis, and holdings_dashb
 
 from typing import Dict, Any, List, Optional
 import os
+import logging
 import pandas as pd
 from pptx import Presentation
 from pptx.util import Inches, Pt
@@ -14,6 +15,8 @@ from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.enum.shapes import MSO_SHAPE
 from pptx.oxml import parse_xml
 from pptx.oxml.ns import qn
+
+logger = logging.getLogger(__name__)
 
 
 def hex_to_rgb(hex_str: str) -> RGBColor:
@@ -720,15 +723,59 @@ class PowerPointRenderer:
         run_c.font.bold = True
         run_c.font.color.rgb = self.banner_blue
 
-    def save(self, output_path: str):
-        """Saves final presentation with file lock resilience."""
+    def save(self, output_path: str) -> Optional[str]:
+        """
+        Saves final presentation with file lock resilience and graceful error handling.
+        Handles re-saving failures gracefully and logs all errors.
+        Returns the saved file path if successful, or None if all attempts failed.
+        """
         os.makedirs(os.path.dirname(output_path), exist_ok=True)
+
+        # 1. Primary Save Attempt
         try:
             self.prs.save(output_path)
+            logger.info(f"Presentation saved successfully to {output_path}")
             print(f"Presentation saved successfully to {output_path}")
-        except PermissionError:
+            return output_path
+        except (PermissionError, OSError) as e:
             base, ext = os.path.splitext(output_path)
             alt_path = f"{base}_new{ext}"
-            print(f"Warning: '{output_path}' is currently open in PowerPoint or locked. Saving to '{alt_path}' instead.")
-            self.prs.save(alt_path)
-            print(f"Presentation saved successfully to {alt_path}")
+            logger.warning(
+                f"Primary save failed for '{output_path}' ({e}). Attempting re-saving to '{alt_path}'."
+            )
+            print(f"Warning: '{output_path}' is currently open or locked ({e}). Attempting re-saving to '{alt_path}'...")
+
+            # 2. Re-saving Attempt (Alternative Path)
+            try:
+                self.prs.save(alt_path)
+                logger.info(f"Presentation saved successfully to alternative path: {alt_path}")
+                print(f"Presentation saved successfully to {alt_path}")
+                return alt_path
+            except Exception as re_err:
+                logger.error(
+                    f"Re-saving failure: Could not save presentation to alternative path '{alt_path}': {re_err}",
+                    exc_info=True
+                )
+                print(f"Error: Re-saving failure on '{alt_path}': {re_err}")
+
+                # 3. Last-Resort Attempt (Timestamped Fallback)
+                try:
+                    from datetime import datetime
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    ts_path = f"{base}_{timestamp}{ext}"
+                    print(f"Attempting final re-save to timestamped fallback '{ts_path}'...")
+                    self.prs.save(ts_path)
+                    logger.info(f"Presentation saved to timestamped fallback: {ts_path}")
+                    print(f"Presentation saved successfully to timestamped fallback: {ts_path}")
+                    return ts_path
+                except Exception as final_err:
+                    logger.error(
+                        f"Critical re-saving failure: All save attempts failed for presentation: {final_err}",
+                        exc_info=True
+                    )
+                    print(f"Critical Error: Failed to save presentation to any fallback location: {final_err}")
+                    return None
+        except Exception as e:
+            logger.error(f"Unexpected error while saving presentation to '{output_path}': {e}", exc_info=True)
+            print(f"Error: Unexpected saving failure for '{output_path}': {e}")
+            return None

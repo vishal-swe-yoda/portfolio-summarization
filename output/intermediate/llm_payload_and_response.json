@@ -58,12 +58,12 @@
         "benchmark_weight": 7.094022,
         "active_weight": 2.7,
         "observations": [
-          "Active bet of +2.7% reflects positive positioning toward structural digital transformation and potential recovery in global enterprise tech spending.",
-          "Allocation sits above the benchmark weighting, serving as a key non-domestic growth driver."
+          "Active overweight stance of +2.70% reflects an intentional tilt toward quality digital service providers and global enterprise tech spend recovery.",
+          "Positions the strategy to benefit from multi-year cloud transformation and software demand tailwinds."
         ],
         "risks": [
-          "Prolonged softness in discretionary IT spending across North America and Europe.",
-          "Adverse foreign exchange fluctuations and wage inflation impacting operating margins."
+          "Slowing discretionary IT enterprise budgets across North America and Europe.",
+          "Foreign exchange headwinds and margin pressure from high onshore delivery costs."
         ]
       },
       {
@@ -72,12 +72,12 @@
         "benchmark_weight": 30.830771,
         "active_weight": 2.6,
         "observations": [
-          "Financial Services represents the fund's largest single absolute sector allocation at 33.45%.",
-          "Overweight stance signals confidence in domestic credit expansion and well-capitalized institutional balance sheets."
+          "Financials constitute the portfolio's largest absolute holding at 33.45%, expressing strong conviction in domestic credit demand.",
+          "Focus remains on well-capitalized private lenders and non-bank financial institutions benefiting from credit deepening."
         ],
         "risks": [
-          "Net interest margin contraction in a stabilizing or declining interest rate cycle.",
-          "Unforeseen asset quality deterioration in unsecured retail or SME lending segments."
+          "Net interest margin compression arising from elevated deposit funding costs.",
+          "Regulatory tightening on unsecured retail credit and potential uptick in asset quality slippages."
         ]
       },
       {
@@ -86,12 +86,12 @@
         "benchmark_weight": 7.054061,
         "active_weight": 1.9,
         "observations": [
-          "Active weight of +1.9% targets ongoing domestic premiumization trends and sustained replacement demand.",
-          "Positioning benefits from operational leverage and improving component export realization."
+          "An active overweight of +1.90% captures domestic consumer discretionary resilience and auto premiumization trends.",
+          "Underpins structural market share gains across both passenger vehicle OEMs and auto component suppliers."
         ],
         "risks": [
-          "Volatile commodity prices impacting input costs and gross margins.",
-          "Demand slowdown in entry-level vehicle categories due to elevated cost of ownership."
+          "Vulnerability to raw material cost inflation (steel, aluminum, precious metals).",
+          "Subdued volume growth in price-sensitive entry-level vehicle segments."
         ]
       }
     ],
@@ -102,12 +102,11 @@
         "benchmark_weight": 6.623352,
         "active_weight": -2.0,
         "observations": [
-          "Underweight position of -2.0% suggests caution regarding elevated valuations and execution timelines in private capex.",
-          "Allocation remains below the benchmark's 6.62% weight, indicating a preference for less capital-intensive growth."
+          "Underweight position of -2.00% driven by stretched valuations across industrial and engineering peers despite positive multi-year order books.",
+          "Reflects a selective stance rather than broad participation across domestic capex themes."
         ],
         "risks": [
-          "Underperformance risk if government-led infrastructure spending and manufacturing capex accelerate beyond forecasts.",
-          "Substantial order inflow momentum leading to multiple expansion."
+          "Underperformance risk if government infrastructure outlays and private capex accelerate ahead of expectations."
         ]
       },
       {
@@ -116,12 +115,11 @@
         "benchmark_weight": 4.380929,
         "active_weight": -2.0,
         "observations": [
-          "Fund holds a cautious view on raw material cyclicality, keeping exposure nearly half of the benchmark weight.",
-          "Reflects anticipated pressure from uneven global industrial activity and persistent Chinese production dynamics."
+          "Substantial relative underweight (-2.00%) mitigates exposure to global commodity down-cycles and volatile realizations.",
+          "Reflects caution regarding global manufacturing demand and Chinese economic stimulus durability."
         ],
         "risks": [
-          "Sharply rising global commodity prices driven by supply constraints or stimulus measures.",
-          "Spike in domestic infrastructure demand supporting higher realization prices."
+          "Potential upside miss during sudden global raw material supply crunches or commodity price rallies."
         ]
       },
       {
@@ -130,24 +128,21 @@
         "benchmark_weight": 8.007969,
         "active_weight": -1.7,
         "observations": [
-          "Underweight stance of -1.7% limits exposure to refining margin volatility and regulatory interventions.",
-          "Portfolio favors secular growth sectors over regulated and commodity-linked energy assets."
+          "Fund holds a -1.70% underweight relative to the benchmark weight of 8.01%.",
+          "Allocation limits vulnerability to refining margin volatility, international crude price swings, and state pricing intervention."
         ],
         "risks": [
-          "Geopolitical disruptions driving sustained surges in crude oil and natural gas prices.",
-          "Strong cash generation and high dividend yields outperforming the broader benchmark during market downturns."
+          "Adverse relative performance if sustained geopolitical disruption drives elevated upstream crude realizations."
         ]
       }
     ],
     "portfolio_observations": [
-      "The portfolio exhibits a deliberate tilt toward domestic financial deepening and consumer discretionary cycles, balanced by selective exposure to global IT services.",
-      "Active risk is financed largely through underweight positions in heavy cyclicals and commodity-linked sectors, namely Capital Goods, Metals & Mining, and Energy.",
-      "Active sector tilts remain disciplined within a tight +/- 3% band, indicating that performance will predominantly be driven by stock selection rather than high-conviction macro factor divergence."
+      "Portfolio active share demonstrates a pro-cyclical domestic consumption and private banking bias, counterbalanced by an underweight in capital-intensive commodities and energy.",
+      "Concentration risk is prominent in Financial Services, which represents over a third (33.45%) of total portfolio assets."
     ],
     "data_limitations": [
-      "Portfolio analysis is restricted to sector-level aggregates; constituent holdings, market-cap distributions, and stock-specific active weights are unavailable.",
-      "Performance attribution metrics (Brinson allocation and selection effects) and turnover statistics were not provided.",
-      "Cash levels and derivative exposure data are omitted, limiting the complete assessment of uninvested capital and gross/net leverage."
+      "Security-level holdings, cash balances, and attribution decomposition (allocation vs. selection effect) were not provided.",
+      "Active weights provided in the input source are rounded figures relative to raw arithmetic differences between fund and benchmark weights."
     ]
   }
 }

@@ -7,8 +7,11 @@ Implements extract_slide_1_tables and exports all DataFrames to output/intermedi
 from typing import Dict, Any, List, Optional
 import os
 import json
+import logging
 import pandas as pd
 import yaml
+
+logger = logging.getLogger(__name__)
 
 
 def extract_slide_1_tables(excel_path: str, fund_name: str = "UTI Multi Cap Fund", bm_name: str = "BSE100") -> Dict[str, pd.DataFrame]:
@@ -565,8 +568,26 @@ class PortfolioDataEngine:
                     if isinstance(df_item, pd.DataFrame) and not df_item.empty:
                         clean_sheet_name = sheet_name[:31]  # Excel 31 character limit
                         df_item.to_excel(writer, sheet_name=clean_sheet_name, index=False)
+            logger.info(f"Saved pandas output Excel workbook to {out_excel}")
             print(f"Saved pandas output Excel workbook to {out_excel}")
+        except (PermissionError, OSError) as pe:
+            alt_excel = os.path.join(output_dir, f"{filename_base}_new.xlsx")
+            logger.warning(f"Primary Excel export failed for '{out_excel}' ({pe}). Attempting re-saving to '{alt_excel}'.")
+            print(f"Warning: '{out_excel}' is open or locked ({pe}). Attempting re-saving to '{alt_excel}'...")
+            try:
+                with pd.ExcelWriter(alt_excel, engine="openpyxl") as writer:
+                    for sheet_name, df_item in dfs.items():
+                        if isinstance(df_item, pd.DataFrame) and not df_item.empty:
+                            clean_sheet_name = sheet_name[:31]
+                            df_item.to_excel(writer, sheet_name=clean_sheet_name, index=False)
+                logger.info(f"Saved pandas output Excel workbook to alternative path: {alt_excel}")
+                print(f"Saved pandas output Excel workbook to {alt_excel}")
+                out_excel = alt_excel
+            except Exception as re_err:
+                logger.error(f"Re-saving failure: Could not write pandas output Excel file to '{alt_excel}': {re_err}", exc_info=True)
+                print(f"Error: Re-saving failure for pandas output Excel file '{alt_excel}': {re_err}")
         except Exception as e:
+            logger.error(f"Failed to export pandas Excel output to '{out_excel}': {e}", exc_info=True)
             print(f"Warning: Could not write pandas output Excel file: {e}")
 
         # 2. Export human-readable text file

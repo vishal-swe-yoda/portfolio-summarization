@@ -139,7 +139,7 @@ report:
 
 llm:
   provider: "gemini"  # Options: "gemini", "deepseek", "openai", "fallback"
-  model: "gemini-1.5-flash"
+  model: "gemini--fl3.8ash"
   endpoint: "https://generativelanguage.googleapis.com/v1beta/models"
   temperature: 0.2
   instruction: "Write concise, evidence-based portfolio observations."
@@ -166,13 +166,52 @@ llm:
 
 ---
 
-## 5. Running the Generator
+## 5. Running the Application
 
-### Basic Execution
-Run the CLI orchestrator pointing to your Excel workbook:
+### Option A: FastAPI REST API Server with Interactive Swagger UI
+
+Start the Uvicorn web server:
 
 ```bash
-python main.py --excel "data/ValEqAnalysis_30.03.26 - Copy.xlsx" --output "output/uti_portfolio_review.pptx"
+uvicorn app:app --reload
+```
+
+Once running, access the interactive API interfaces in your browser:
+- **Interactive Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs) (or directly [http://localhost:8000/](http://localhost:8000/))
+- **ReDoc Documentation**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
+- **OpenAPI JSON Specification**: [http://localhost:8000/openapi.json](http://localhost:8000/openapi.json)
+
+#### Uploading an Excel File (`curl`):
+Upload any `.xlsx` or `.xls` portfolio file:
+
+```bash
+curl -X POST "http://localhost:8000/upload" \
+  -H "accept: application/json" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@data/sample_portfolio_data.xlsx"
+```
+
+#### API Success Response:
+```json
+{
+  "status": "success",
+  "input_file": "sample_input_1.xlsx",
+  "output_file": "output_1.pptx",
+  "message": "File processed successfully"
+}
+```
+
+#### Downloading the Generated Presentation:
+```bash
+curl -O "http://localhost:8000/download/output_1.pptx"
+```
+
+### Option B: Command-Line Interface (CLI)
+
+Run the CLI orchestrator directly:
+
+```bash
+python main.py --excel "data/sample_portfolio_data.xlsx" --output "output/uti_portfolio_review.pptx"
 ```
 
 ### CLI Arguments
@@ -185,9 +224,18 @@ python main.py --excel "data/ValEqAnalysis_30.03.26 - Copy.xlsx" --output "outpu
 
 ---
 
-## 6. Testing & Quality Assurance
+## 6. Concurrency Safety & Input-Output Identity
 
-Run the test suite to verify all pipeline components (data engine, chart generation, LLM strategy fallback, and PowerPoint assembly):
+- **Thread-Safe Monotonic Sequencing**: Concurrent uploads are serialized using `threading.Lock()` to assign sequential filenames (`sample_input_1.xlsx`, `sample_input_2.xlsx`, etc.) without collisions.
+- **Strict Input-Output Identity**: The assigned sequence number is carried through the pipeline to produce the corresponding PowerPoint file (`output_1.pptx`, `output_2.pptx`), ensuring inputs and outputs always match.
+- **Execution Serialization**: Matplotlib and file writing operations are serialized across worker threads to prevent race conditions on shared intermediate assets.
+- **Sanitized Client Errors**: Failed processing returns clean HTTP error messages without leaking internal stack traces or environment keys.
+
+---
+
+## 7. Testing & Quality Assurance
+
+Run the test suite to verify all pipeline components and API endpoints:
 
 ```bash
 python test_pipeline.py
